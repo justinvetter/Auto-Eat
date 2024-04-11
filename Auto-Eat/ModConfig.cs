@@ -1,7 +1,10 @@
+using StardewModdingAPI;
+
 namespace AutoEat
 {
-    internal class ModConfig
+    public class ModConfig
     {
         public float StaminaThreshold { get; set; }
+        public bool EnableStamina { get; set; }
     }
 }

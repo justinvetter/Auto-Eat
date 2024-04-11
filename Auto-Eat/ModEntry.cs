@@ -1,4 +1,5 @@
 ﻿using System;
+using GenericModConfigMenu;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
@@ -18,7 +19,7 @@ namespace AutoEat
         private static bool eatingFood = false; //just a boolean used to make it so that code doesn't run more than once.
 
         public static bool firstCall = false; //used in clearOldestHUDMessage()
-        public static float eatAtAmount;
+        public static ModConfig Config;
 
         /*********
         ** Public methods
@@ -27,19 +28,12 @@ namespace AutoEat
         /// <param name="helper">Provides simplified APIs for writing mods.</param>
         public override void Entry(IModHelper helper)
         {
-            ModConfig config = helper.ReadConfig<ModConfig>();
-            eatAtAmount = config.StaminaThreshold;
-
-            if (eatAtAmount < 0)
-            {
-                eatAtAmount = config.StaminaThreshold = 0;
-                helper.WriteConfig(config);
-            }
-
+            Config = helper.ReadConfig<ModConfig>();
             helper.ConsoleCommands.Add("player_setstaminathreshold", "Sets the threshold at which the player will automatically consume food.\nUsage: player_setstaminathreshold <value>\n- value: the float/integer amount.", this.SetStaminaThreshold); //command that sets when to automatically eat (i.e. 25 energy instead of 0)
             helper.Events.GameLoop.UpdateTicked += this.OnUpdateTicked; //adding the method with the same name below to the corresponding event in order to make them connect
             helper.Events.GameLoop.Saving += this.OnSaving;
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
+            helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
         }
 
         public static void ClearOldestHUDMessage() //I may have stolen this idea from CJBok (props to them)
@@ -53,6 +47,38 @@ namespace AutoEat
         /*********
         ** Private methods
         *********/
+
+        private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
+        {
+            // get Generic Mod Config Menu's API (if it's installed)
+            var configMenu = this.Helper.ModRegistry.GetApi<IGenericModConfigMenuApi>("spacechase0.GenericModConfigMenu");
+            if (configMenu is null)
+                return;
+
+            // register mod
+            configMenu.Register(
+                mod: this.ModManifest,
+                reset: () => Config = new ModConfig(),
+                save: () => this.Helper.WriteConfig(Config)
+            );
+
+            // add some config options
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                name: () => "Enable for stamina",
+                tooltip: () => "Enable automatically consume food for stamina.",
+                getValue: () => Config.EnableStamina,
+                setValue: value => Config.EnableStamina = value
+            );
+            configMenu.AddNumberOption(
+                mod: this.ModManifest,
+                name: () => "Stamina threshold",
+                tooltip: () => "Stamina threshold at which the player will automatically consume food.",
+                getValue: () => Config.StaminaThreshold,
+                setValue: value => Config.StaminaThreshold = value
+            );
+        }
+
         private void SetStaminaThreshold(string command, string[] args)
         {
             float newValue = (float)double.Parse(args[0]);
@@ -60,12 +86,8 @@ namespace AutoEat
             if (newValue < 0.0f || newValue >= Game1.player.MaxStamina) //don't allow the stamina threshold to be set outside the possible bounds
                 newValue = 0.0f;
 
-            eatAtAmount = newValue;
-            ModConfig newConfig = new ModConfig()
-            {
-                StaminaThreshold = newValue
-            };
-            this.Helper.WriteConfig(newConfig);
+            Config.StaminaThreshold = newValue;
+            this.Helper.WriteConfig(Config);
 
             this.Monitor.Log($"OK, set the stamina threshold to {newValue}.");
         }
@@ -80,7 +102,7 @@ namespace AutoEat
                 goodPreviousFrame = false;
                 return;
             }
-            if (Game1.player.Stamina <= eatAtAmount) //if the player has run out of Energy, then:
+            if (Game1.player.Stamina <= Config.StaminaThreshold) //if the player has run out of Energy, then:
             {
                 if (!goodPreviousFrame) //makes it so that they have to be "good" (doing nothing, not in a menu) two frames in a row in order for this to pass - necessary thanks to Lost Book bug (tl;dr - wait a frame before continuing)
                 {

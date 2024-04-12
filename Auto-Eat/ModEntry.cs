@@ -48,6 +48,13 @@ namespace AutoEat
         ** Private methods
         *********/
 
+        private void ResetStateVars()
+        {
+            trueOverexertion = false;
+            goodPreviousFrame = false;
+            eatingFood = false; 
+        }
+
         private void OnGameLaunched(object sender, GameLaunchedEventArgs e)
         {
             // get Generic Mod Config Menu's API (if it's installed)
@@ -59,7 +66,7 @@ namespace AutoEat
             configMenu.Register(
                 mod: this.ModManifest,
                 reset: () => Config = new ModConfig(),
-                save: () => this.Helper.WriteConfig(Config)
+                save: () => { ResetStateVars(); this.Helper.WriteConfig(Config);}
             );
 
             // add some config options
@@ -75,7 +82,21 @@ namespace AutoEat
                 name: () => "Stamina threshold",
                 tooltip: () => "Stamina threshold at which the player will automatically consume food.",
                 getValue: () => Config.StaminaThreshold,
-                setValue: value => Config.StaminaThreshold = value
+                setValue: value => Config.StaminaThreshold = Math.Max(value, 0f)
+            );
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                name: () => "Enable for health",
+                tooltip: () => "Enable automatically consume food for health.",
+                getValue: () => Config.EnableHealth,
+                setValue: value => Config.EnableHealth = value
+            );
+            configMenu.AddNumberOption(
+                mod: this.ModManifest,
+                name: () => "Health threshold",
+                tooltip: () => "Health threshold at which the player will automatically consume food.",
+                getValue: () => Config.HealthThreshold,
+                setValue: value => Config.HealthThreshold = Math.Max(value, 0f)
             );
         }
 
@@ -97,12 +118,24 @@ namespace AutoEat
         /// <param name="e">The event data.</param>
         private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
         {
+            if (!Config.EnableHealth && !Config.EnableStamina) 
+            {
+                return; 
+            }
             if (!Context.IsPlayerFree || trueOverexertion || newDay) //are they paused/in a menu, over-exerted, or it's the beginning of the day, then do not continue
             {
                 goodPreviousFrame = false;
                 return;
             }
-            if (Game1.player.Stamina <= Config.StaminaThreshold) //if the player has run out of Energy, then:
+            if (eatingFood)
+            {
+                eatingFood = false;
+                return;
+            }
+            if (Game1.player.isEating) //if already eating food, then ignore the rest of the method in order to prevent unnecessary loop
+                return;
+            var needEat = (Config.EnableStamina && (Game1.player.Stamina <= Config.StaminaThreshold)) || (Config.EnableHealth && (Game1.player.health <= Config.HealthThreshold));
+            if (needEat) //if the player has run out of Energy, then:
             {
                 if (!goodPreviousFrame) //makes it so that they have to be "good" (doing nothing, not in a menu) two frames in a row in order for this to pass - necessary thanks to Lost Book bug (tl;dr - wait a frame before continuing)
                 {
@@ -111,8 +144,6 @@ namespace AutoEat
                 }
                 if (firstCall) //if clearOldestHUDMessage has not been called yet, then
                     ClearOldestHUDMessage(); //get rid of the annoying over-exerted message without it noticeably popping up
-                if (eatingFood || Game1.player.isEating) //if already eating food, then ignore the rest of the method in order to prevent unnecessary loop
-                    return;
                 Item cheapestFood = GetCheapestFood(); //currently set to "null" (aka none), as we have not found a food yet
                 if (cheapestFood != null) //if a cheapest food was found, then:
                 {

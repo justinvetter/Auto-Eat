@@ -149,7 +149,9 @@ namespace AutoEat
                 {
                     eatingFood = true;
                     Game1.showGlobalMessage("You consume " + cheapestFood.Name + " to avoid over-exertion."); //makes a message to inform the player of the reason they just stopped what they were doing to be forced to eat a food, lol.
+                    var direction = Game1.player.FacingDirection;
                     Game1.player.eatObject((StardewValley.Object)cheapestFood); //cast the cheapestFood Item to be an Object since playerEatObject only accepts Objects, finally allowing the player to eat the cheapest food they have on them.
+                    Game1.player.FacingDirection = direction;
                     //Game1.playerEatObject((StardewValley.Object)cheapestFood); //<== pre-multiplayer beta version of above line of code.
                     cheapestFood.Stack--; //stack being the amount of the cheapestFood that the player has on them, we have to manually decrement this apparently, as playerEatObject does not do this itself for some reason.
                     if (cheapestFood.Stack == 0) //if the stack has hit the number 0, then

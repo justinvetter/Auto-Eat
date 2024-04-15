@@ -4,11 +4,11 @@ namespace AutoEat
 {
     public class ModConfig
     {
-        public float StaminaThreshold { get; set; }
-        public bool EnableStamina { get; set; }
-        public float HealthThreshold { get; set; }
-        public bool EnableHealth { get; set; }
-        public bool DynamicStaminaThreshold { get; set; }
-        public bool PreferHigherInventory  { get; set; }
+        public float StaminaThreshold { get; set; } = 8.0f;
+        public bool EnableStamina { get; set; } = true;
+        public float HealthThreshold { get; set; } = 32.0f;
+        public bool EnableHealth { get; set; } = true;
+        public bool DynamicStaminaThreshold { get; set; } = false;
+        public bool PreferHigherInventory { get; set; } = true;
     }
 }

@@ -25,3 +25,4 @@ _ReSharper*/
 *.nuget.targets
 Auto-Eat/Auto-Eat.csproj
 .vs/Auto-Eat/v15/.suo
+.idea

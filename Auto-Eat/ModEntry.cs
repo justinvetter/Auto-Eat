@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using GenericModConfigMenu;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -106,6 +107,13 @@ namespace AutoEat
                 getValue: () => Config.HealthThreshold,
                 setValue: value => Config.HealthThreshold = Math.Max(value, 0f)
             );
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                name: () => "Prefer higher inventory food",
+                tooltip: () => "Among equally cheap (salePrice / Energy) foods, prefer foods with higher inventory.",
+                getValue: () => Config.PreferHigherInventory,
+                setValue: value => Config.PreferHigherInventory = value
+            );
         }
 
         private void SetStaminaThreshold(string command, string[] args)
@@ -173,7 +181,7 @@ namespace AutoEat
                 Item cheapestFood = GetCheapestFood(); //currently set to "null" (aka none), as we have not found a food yet
                 if (cheapestFood != null) //if a cheapest food was found, then:
                 {
-                    this.Monitor.Log($"Auto-Eat: {Game1.player.Stamina} {staminaThreshold}");
+                    this.Monitor.Log($"Auto-Eat: Stamina: {Game1.player.Stamina} <= {staminaThreshold}, Health: {Game1.player.health} <= {Config.HealthThreshold}, Eat: {cheapestFood.Name}");
                     eatingFood = true;
                     Game1.showGlobalMessage("You consume " + cheapestFood.Name + " to avoid over-exertion."); //makes a message to inform the player of the reason they just stopped what they were doing to be forced to eat a food, lol.
                     var direction = Game1.player.FacingDirection;
@@ -204,18 +212,18 @@ namespace AutoEat
         //will return null if no item found; shoutouts to RobertLSnead
         private Item GetCheapestFood()
         {
-            Item cheapestFood = null; //currently set to "null" (aka none), as we have not found a food yet
-            foreach (Item curItem in Game1.player.Items) //check all of the player's inventory items sequentially (with "curItem" meaning "current item") for the following:
+            var foods = Game1.player.Items.Where(curItem => (curItem is StardewValley.Object && ((StardewValley.Object)curItem).Edibility > 0)).ToList();
+            if (foods.Count == 0)
             {
-                if (curItem is StardewValley.Object && ((StardewValley.Object)curItem).Edibility > 0) //is it an Object (rather than, say, a Tool), and is it a food with positive Edibility (aka Energy)? then,
-                {
-                    if (cheapestFood == null) //if we do not yet have a cheapest food set, then
-                        cheapestFood = curItem; //the cheapest food has to be the current item, so that we can compare its price to another item without getting errors
-                    else if ((curItem.salePrice() / ((StardewValley.Object)curItem).Edibility) < (cheapestFood.salePrice() / ((StardewValley.Object)cheapestFood).Edibility)) //however, if we already have a cheapest food, and the ratio of price-to-stamina of the current item is even less, then
-                        cheapestFood = curItem; //the food with the least price-to-stamina ratio is actually the current item!
-                }
+                return null;
             }
-            return cheapestFood;
+            if (Config.PreferHigherInventory)
+            {
+                return foods.OrderBy(curItem => (curItem.salePrice() / ((StardewValley.Object)curItem).Edibility, -curItem.Stack))
+                    .First();
+            }
+            return foods.OrderBy(curItem => curItem.salePrice() / ((StardewValley.Object)curItem).Edibility)
+                    .First();
         }
 
         /// <summary>Raised before the game begins writes data to the save file (except the initial save creation).</summary>

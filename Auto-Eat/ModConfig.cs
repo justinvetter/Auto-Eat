@@ -9,6 +9,6 @@ namespace AutoEat
         public float HealthThreshold { get; set; }
         public bool EnableHealth { get; set; }
         public bool DynamicStaminaThreshold { get; set; }
-
+        public bool PreferHigherInventory  { get; set; }
     }
 }

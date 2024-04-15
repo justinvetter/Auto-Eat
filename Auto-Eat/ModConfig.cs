@@ -8,5 +8,7 @@ namespace AutoEat
         public bool EnableStamina { get; set; }
         public float HealthThreshold { get; set; }
         public bool EnableHealth { get; set; }
+        public bool DynamicStaminaThreshold { get; set; }
+
     }
 }

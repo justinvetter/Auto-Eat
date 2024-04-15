@@ -3,6 +3,7 @@ using GenericModConfigMenu;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
+using StardewValley.Tools;
 
 namespace AutoEat
 {
@@ -86,6 +87,13 @@ namespace AutoEat
             );
             configMenu.AddBoolOption(
                 mod: this.ModManifest,
+                name: () => "Dynamic stamina threshold",
+                tooltip: () => "Use dynamic stamina threshold depending on current tool costs.",
+                getValue: () => Config.DynamicStaminaThreshold,
+                setValue: value => Config.DynamicStaminaThreshold = value
+            );
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
                 name: () => "Enable for health",
                 tooltip: () => "Enable automatically consume food for health.",
                 getValue: () => Config.EnableHealth,
@@ -113,6 +121,26 @@ namespace AutoEat
             this.Monitor.Log($"OK, set the stamina threshold to {newValue}.");
         }
 
+        private float GetDynamicStaminaThreshold()
+        {
+            float threshold;
+            var tool = Game1.player.CurrentTool;
+            if (tool is FishingRod)
+            {
+                threshold = 8;
+            }
+            else if (tool is Axe || tool is WateringCan || tool is Hoe || tool is Pickaxe)
+            {
+                threshold = 2;
+            }
+            else
+            {
+                threshold = 0;
+            }
+
+            return threshold;
+        }
+
         /// <summary>Raised after the game state is updated (≈60 times per second).</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event data.</param>
@@ -128,9 +156,10 @@ namespace AutoEat
                 return;
             }
 
+            var staminaThreshold = Config.DynamicStaminaThreshold ? GetDynamicStaminaThreshold() : Config.StaminaThreshold;
             //if already eating food, then ignore the rest of the method in order to prevent unnecessary loop
             var needEat = (!eatingFood && !Game1.player.isEating) && (
-                (Config.EnableStamina && (Game1.player.Stamina <= Config.StaminaThreshold)) 
+                (Config.EnableStamina && (Game1.player.Stamina <= staminaThreshold)) 
                 || (Config.EnableHealth && (Game1.player.health <= Config.HealthThreshold)));
             if (needEat) //if the player has run out of Energy, then:
             {
@@ -144,6 +173,7 @@ namespace AutoEat
                 Item cheapestFood = GetCheapestFood(); //currently set to "null" (aka none), as we have not found a food yet
                 if (cheapestFood != null) //if a cheapest food was found, then:
                 {
+                    this.Monitor.Log($"Auto-Eat: {Game1.player.Stamina} {staminaThreshold}");
                     eatingFood = true;
                     Game1.showGlobalMessage("You consume " + cheapestFood.Name + " to avoid over-exertion."); //makes a message to inform the player of the reason they just stopped what they were doing to be forced to eat a food, lol.
                     var direction = Game1.player.FacingDirection;

@@ -127,14 +127,11 @@ namespace AutoEat
                 goodPreviousFrame = false;
                 return;
             }
-            if (eatingFood)
-            {
-                eatingFood = false;
-                return;
-            }
-            if (Game1.player.isEating) //if already eating food, then ignore the rest of the method in order to prevent unnecessary loop
-                return;
-            var needEat = (Config.EnableStamina && (Game1.player.Stamina <= Config.StaminaThreshold)) || (Config.EnableHealth && (Game1.player.health <= Config.HealthThreshold));
+
+            //if already eating food, then ignore the rest of the method in order to prevent unnecessary loop
+            var needEat = (!eatingFood && !Game1.player.isEating) && (
+                (Config.EnableStamina && (Game1.player.Stamina <= Config.StaminaThreshold)) 
+                || (Config.EnableHealth && (Game1.player.health <= Config.HealthThreshold)));
             if (needEat) //if the player has run out of Energy, then:
             {
                 if (!goodPreviousFrame) //makes it so that they have to be "good" (doing nothing, not in a menu) two frames in a row in order for this to pass - necessary thanks to Lost Book bug (tl;dr - wait a frame before continuing)

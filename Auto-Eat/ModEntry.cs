@@ -114,6 +114,13 @@ namespace AutoEat
                 getValue: () => Config.PreferHigherInventory,
                 setValue: value => Config.PreferHigherInventory = value
             );
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                name: () => "Auto drink coffee",
+                tooltip: () => "Drink coffee or Triple Shot Espresso when the buff is gone.",
+                getValue: () => Config.EnableCoffee,
+                setValue: value => Config.EnableCoffee = value
+            );
         }
 
         private void SetStaminaThreshold(string command, string[] args)
@@ -154,6 +161,17 @@ namespace AutoEat
         /// <param name="e">The event data.</param>
         private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
         {
+            if (!Context.IsPlayerFree)
+            {
+                return;
+            }
+            EatForStamina(sender, e);
+            EatForBuff(sender, e);
+        }
+        
+        private void EatForStamina(object sender, UpdateTickedEventArgs e)
+
+        {
             if (!Config.EnableHealth && !Config.EnableStamina) 
             {
                 return; 
@@ -183,15 +201,7 @@ namespace AutoEat
                 {
                     this.Monitor.Log($"Auto-Eat: Stamina: {Game1.player.Stamina} <= {staminaThreshold}, Health: {Game1.player.health} <= {Config.HealthThreshold}, Eat: {cheapestFood.Name}");
                     eatingFood = true;
-                    Game1.showGlobalMessage("You consume " + cheapestFood.Name + " to avoid over-exertion."); //makes a message to inform the player of the reason they just stopped what they were doing to be forced to eat a food, lol.
-                    var direction = Game1.player.FacingDirection;
-                    Game1.player.eatObject((StardewValley.Object)cheapestFood); //cast the cheapestFood Item to be an Object since playerEatObject only accepts Objects, finally allowing the player to eat the cheapest food they have on them.
-                    Game1.player.FacingDirection = direction;
-                    //Game1.playerEatObject((StardewValley.Object)cheapestFood); //<== pre-multiplayer beta version of above line of code.
-                    cheapestFood.Stack--; //stack being the amount of the cheapestFood that the player has on them, we have to manually decrement this apparently, as playerEatObject does not do this itself for some reason.
-                    if (cheapestFood.Stack == 0) //if the stack has hit the number 0, then
-                        Game1.player.removeItemFromInventory(cheapestFood); //delete the item from the player's inventory..I don't want to know what would happen if they tried to use it when it was at 0!
-                }
+                    EatFood(cheapestFood, "to avoid over-exertion");                }
                 else if (Game1.player.stamina <= 0.0f) //however, if no food was found and the player's stamina is at 0, then [shoutouts to RobertLSnead again for pointing out some flawed code here]
                     trueOverexertion = true; //the player will be over-exerted for the rest of the day, just like they normally would be. I made it this way intentionally, in order to keep this mod balanced!
             }
@@ -208,6 +218,51 @@ namespace AutoEat
                 }
             }
         }
+
+        private void EatFood(Item food, string reason)
+        {
+            Game1.showGlobalMessage($"You consume {food.Name} {reason}."); //makes a message to inform the player of the reason they just stopped what they were doing to be forced to eat a food, lol.
+            var direction = Game1.player.FacingDirection;
+            Game1.player.eatObject((StardewValley.Object)food); //cast the cheapestFood Item to be an Object since playerEatObject only accepts Objects, finally allowing the player to eat the cheapest food they have on them.
+            Game1.player.FacingDirection = direction;
+            //Game1.playerEatObject((StardewValley.Object)cheapestFood); //<== pre-multiplayer beta version of above line of code.
+            food.Stack--; //stack being the amount of the cheapestFood that the player has on them, we have to manually decrement this apparently, as playerEatObject does not do this itself for some reason.
+            if (food.Stack == 0) //if the stack has hit the number 0, then
+                Game1.player.removeItemFromInventory(food); //delete the item from the player's inventory..I don't want to know what would happen if they tried to use it when it was at 0!
+        }
+
+        private void EatForBuff(object sender, UpdateTickedEventArgs e)
+        {
+            if (!Config.EnableCoffee)
+            {
+                return;
+            }
+            if (Game1.player.isEating)
+            {
+                return;
+            }
+            var buff = Game1.buffsDisplay.GetSortedBuffs()
+                .FirstOrDefault(obj => (obj.source == "Triple Shot Espresso" || obj.source == "Coffee"));
+            if (buff != null && buff.millisecondsDuration > 1000)
+            {
+                return;
+            }
+            var coffee = Game1.player.Items
+                .FirstOrDefault(curItem =>
+                {
+                    if ((curItem is StardewValley.Object obj))
+                    {
+                        return (obj.Edibility > 0 && (obj.Name == "Triple Shot Espresso" || obj.Name == "Coffee"));
+                    }
+                    return false;
+                });
+            if (coffee != null)
+            {
+                EatFood(coffee, "for buff");
+                this.Monitor.Log($"Auto-Eat: {coffee.Name} left {coffee.Stack}");
+            }
+        }
+
 
         //will return null if no item found; shoutouts to RobertLSnead
         private Item GetCheapestFood()

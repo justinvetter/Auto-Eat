@@ -10,5 +10,6 @@ namespace AutoEat
         public bool EnableHealth { get; set; } = true;
         public bool DynamicStaminaThreshold { get; set; } = false;
         public bool PreferHigherInventory { get; set; } = true;
+        public bool EnableCoffee { get; set; } = false;
     }
 }

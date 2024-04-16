@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using GenericModConfigMenu;
 using StardewModdingAPI;
@@ -36,6 +36,7 @@ namespace AutoEat
             helper.Events.GameLoop.Saving += this.OnSaving;
             helper.Events.GameLoop.DayStarted += this.OnDayStarted;
             helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
+            helper.Events.Input.ButtonPressed += this.OnButtonPressed;
         }
 
         public static void ClearOldestHUDMessage() //I may have stolen this idea from CJBok (props to them)
@@ -121,6 +122,20 @@ namespace AutoEat
                 getValue: () => Config.EnableCoffee,
                 setValue: value => Config.EnableCoffee = value
             );
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                name: () => "Enable eat with hotkey",
+                tooltip: () => "Enable the eat with hotkey (default: R).",
+                getValue: () => Config.EnableHotkey,
+                setValue: value => Config.EnableHotkey = value
+            );
+            configMenu.AddKeybindList(
+                mod: this.ModManifest,
+                name: () => "Hotkey to eat",
+                tooltip: () => "The hotkey to eat food with. Test",
+                getValue: () => Config.HotkeytoEat,
+                setValue: keybinds => Config.HotkeytoEat = keybinds
+            );
         }
 
         private void SetStaminaThreshold(string command, string[] args)
@@ -159,6 +174,38 @@ namespace AutoEat
         /// <summary>Raised after the game state is updated (≈60 times per second).</summary>
         /// <param name="sender">The event sender.</param>
         /// <param name="e">The event data.</param>
+
+        private void OnButtonPressed(object sender, ButtonPressedEventArgs e)
+        {
+            if (!Context.IsWorldReady)
+            {
+                return;
+            }
+            if (Config.HotkeytoEat.JustPressed())
+            {
+                this.Monitor.Log("Eat with hotkey pressed");
+                if (!Context.IsPlayerFree || newDay) //are they paused/in a menu, over-exerted, or it's the beginning of the day, then do not continue
+                {
+                    goodPreviousFrame = false;
+                    return;
+                }
+                this.Monitor.Log("Player is free to eat");
+                // if (!goodPreviousFrame) //makes it so that they have to be "good" (doing nothing, not in a menu) two frames in a row in order for this to pass - necessary thanks to Lost Book bug (tl;dr - wait a frame before continuing)
+                // {
+                //     goodPreviousFrame = true;
+                //     return;
+                // }
+                    ClearOldestHUDMessage(); //get rid of the annoying over-exerted message without it noticeably popping up
+                Item cheapestFood = GetCheapestFood(); //currently set to "null" (aka none), as we have not found a food yet
+                if (cheapestFood != null) //if a cheapest food was found, then:
+                {
+                    eatingFood = true;
+                    EatFood(cheapestFood, "because you want to eat it");
+                }
+            }
+        }
+
+
         private void OnUpdateTicked(object sender, UpdateTickedEventArgs e)
         {
             if (!Context.IsPlayerFree)

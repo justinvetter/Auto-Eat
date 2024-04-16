@@ -1,4 +1,5 @@
 using StardewModdingAPI;
+using StardewModdingAPI.Utilities;
 
 namespace AutoEat
 {
@@ -11,5 +12,7 @@ namespace AutoEat
         public bool DynamicStaminaThreshold { get; set; } = false;
         public bool PreferHigherInventory { get; set; } = true;
         public bool EnableCoffee { get; set; } = false;
+        public bool EnableHotkey { get; set; } = false;
+        public KeybindList HotkeytoEat { get; set; } = KeybindList.Parse("R");
     }
 }

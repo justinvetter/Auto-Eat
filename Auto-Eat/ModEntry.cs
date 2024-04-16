@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using GenericModConfigMenu;
 using StardewModdingAPI;
@@ -120,6 +120,20 @@ namespace AutoEat
                 tooltip: () => "Drink coffee or Triple Shot Espresso when the buff is gone.",
                 getValue: () => Config.EnableCoffee,
                 setValue: value => Config.EnableCoffee = value
+            );
+            configMenu.AddBoolOption(
+                mod: this.ModManifest,
+                name: () => "Enable eat with hotkey",
+                tooltip: () => "Enable the eat with hotkey (default: R).",
+                getValue: () => Config.EnableHotkey,
+                setValue: value => Config.EnableHotkey = value
+            );
+            configMenu.AddKeybindList(
+                mod: this.ModManifest,
+                name: () => "Hotkey to eat",
+                tooltip: () => "The hotkey to eat food with. Test",
+                getValue: () => Config.HotkeytoEat,
+                setValue: keybinds => Config.HotkeytoEat = keybinds
             );
         }
 
